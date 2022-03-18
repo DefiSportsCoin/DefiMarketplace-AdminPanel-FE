@@ -1,0 +1,899 @@
+import React, { useState } from "react";
+import { SendHttpRequest } from "./utility";
+import { BaseUrl } from "../Constants/BusinessManager";
+import swal from "sweetalert";
+
+import { CheckSquare, Eye, FilePlus, MinusCircle } from "react-feather";
+import { connect } from "react-redux";
+import { bindActionCreators } from "redux";
+import "react-datepicker/dist/react-datepicker.css";
+import { setIsLoaderActive } from "../actions/index";
+import TablePagination from "@material-ui/core/TablePagination";
+import { getToken } from "../Utils/Utils";
+import { Link } from "react-router-dom";
+import Table from "@material-ui/core/Table";
+import TableBody from "@material-ui/core/TableBody";
+import TableCell from "@material-ui/core/TableCell";
+import TableContainer from "@material-ui/core/TableContainer";
+import TableHead from "@material-ui/core/TableHead";
+import { Search } from "react-feather";
+import TableRow from "@material-ui/core/TableRow";
+import Paper from "@material-ui/core/Paper";
+import { CopyToClipboard } from "react-copy-to-clipboard";
+import SharedLayout from "./shared/SharedLayout";
+import { FileCopySharp } from "@material-ui/icons";
+import { Modal, Button, ModalTitle, Dropdown } from "react-bootstrap";
+// import {Button} from "@material-ui/icons";
+
+const mapStateToProps = (state) => {
+  return {};
+};
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    setIsLoaderActive: bindActionCreators(setIsLoaderActive, dispatch),
+  };
+};
+class MenageAccount extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      split: "",
+      Search: "",
+      Search1: "",
+      page: 0,
+      tableData: [],
+      blockstatus: true,
+      lastcopy: "",
+      copied: false,
+      modalshow: false,
+    };
+  }
+  async updateuserblockstatus(id, status, status2) {
+    if (status == "Active") status = true;
+    if (status == "Deactive") status = false;
+    try {
+      const data = await SendHttpRequest(
+        BaseUrl + "/Amin/UpdateAccountStatus",
+        {
+          accountId: id,
+          accountType: status,
+          accountVerified: status2,
+        },
+        "PUT"
+      );
+
+      if (data.isSuccess) {
+        console.log(data.data);
+      }
+    } catch (error) {
+      // localStorage.clear();
+      this.props.setIsLoaderActive(false);
+      return;
+    }
+
+    try {
+      let t = getToken();
+      var data = await SendHttpRequest(
+        BaseUrl + "/Amin/GetAllAccounts?PageSize=0&CurrentPage=0",
+        {},
+        "GET"
+      );
+      if (data.isSuccess) {
+        this.setState({ tableData: data.data });
+      } else {
+        throw new Error("Something went wrong, try to relogin");
+      }
+    } catch (error) {
+      console.log(error);
+      return swal({
+        icon: "error",
+        text: "Something went wrong, try to relogin",
+      });
+    }
+  }
+  async componentDidMount() {
+    this.props.setIsLoaderActive(true);
+
+    try {
+      let t = getToken();
+      var data = await SendHttpRequest(
+        BaseUrl + "/Amin/GetAllAccounts?PageSize=0&CurrentPage=0",
+        {},
+        "GET"
+      );
+      if (data.isSuccess) {
+        this.setState({ tableData: data.data });
+        console.log("data", this.state.tableData);
+        this.props.setIsLoaderActive(false);
+      } else {
+        throw new Error("Something went wrong, try to relogin");
+      }
+    } catch (error) {
+      console.log(error);
+      this.props.setIsLoaderActive(false);
+      return swal({
+        icon: "error",
+        text: "Something went wrong, try to relogin",
+      });
+    }
+  }
+  handleChangePage = (event, newPage) => {
+    this.setState({ page: newPage });
+  };
+  handleClose = (event, newPage) => {
+    this.setState({ modalshow: false });
+  };
+  Finduser = () => {
+    console.log("called");
+    console.log(
+      this.state.tableData.filter((x) =>
+        x.username?.toLowerCase().includes(this.state.Search1.toLowerCase())
+      )
+    );
+    var temp = this.state.Search1;
+    this.setState({ Search: temp });
+  };
+
+  removeuser = () => {
+    console.log("dadaad", this.state.Search1.length);
+    console.log("Search1+", this.state.Search1);
+    console.log("Search+", this.state.Search);
+    if (this.state.Search1.length == 1) {
+      this.setState({ Search: "" });
+      console.log("ajnbdanbadd", this.state.Search.length);
+    }
+  };
+
+  render() {
+    return (
+      <>
+        <div className="row">
+          <div className="col-lg-12 col-md-12 col-xl-12 col-12 order-2 order-lg-2 order-xl-1">
+            <div className="card p-t-30">
+              <h1 style={{ textAlign: "center" }}>Manage Account</h1>
+              <p style={{ whiteSpace: "nowrap", textAlign: "center" }}>
+                <div className="search-panel">
+                  <input
+                    type="text"
+                    required
+                    placeholder="enter name to search"
+                    className="input-field1"
+                    name="search"
+                    value={this.state.Search}
+                    onChange={(data) => {
+                      this.Finduser();
+                      this.setState({ Search: data.target.value });
+                      this.removeuser();
+                    }}
+                  />
+                  <Search
+                    color="white"
+                    onClick={() => this.Finduser()}
+                    style={{ cursor: "pointer" }}
+                  />
+                </div>
+              </p>
+
+              {this.state.Search.length == 0 ? (
+                <>
+                  {" "}
+                  {this.state.tableData.length > 0 ? (
+                    <div style={{ padding: 10 }}>
+                      <TableContainer component={Paper} className="Text-white">
+                        <Table
+                          className="table table-striped [table-responsive-sm table-responsive-md table-responsive-lg table-responsive-xl AccountStatement Text-white"
+                          style={{ textAlign: "center", color: "white" }}
+                        >
+                          <TableHead className="Text-white">
+                            <TableRow style={{ color: "#fff" }}>
+                              <TableCell className="Text-white">
+                                Username
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Wallet-Address
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Creation-DAte
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Email
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Status
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                OnlineStatus
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Action
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody
+                            style={{ color: "#fff" }}
+                            className="Text-white"
+                          >
+                            {this.state.tableData &&
+                              this.state.tableData.length > 0 &&
+                              this.state.tableData
+                                .slice(
+                                  this.state.page * 5,
+                                  this.state.page * 5 + 5
+                                )
+                                .map((value, index) => {
+                                  return (
+                                    <TableRow
+                                      key={index}
+                                      className="Text-white"
+                                    >
+                                      {/* {console.log(value)} */}
+                                      {/* {this.state.copied ? <span style={{ fontSize: 12, marginLeft: '1%' }}>Copied.</span> : null} */}
+                                      <TableCell className="Text-white">
+                                        {value.username}
+                                      </TableCell>
+
+                                      <CopyToClipboard
+                                        text={value.address}
+                                        onCopy={() =>
+                                          this.setState({
+                                            lastcopy: value.address,
+                                          })
+                                        }
+                                      >
+                                        <TableCell
+                                          className="Text-white"
+                                          title={
+                                            this.state.lastcopy == value.address
+                                              ? "Copied"
+                                              : "click to copy"
+                                          }
+                                          style={{ cursor: "pointer" }}
+                                        >
+                                          {" "}
+                                          {value.address.slice(1, 5) +
+                                            "..." +
+                                            value.address.slice(-5)}{" "}
+                                        </TableCell>
+                                      </CopyToClipboard>
+
+                                      {/* {this.state.copied ? <title>Copied.</title> : null} */}
+                                      <TableCell className="Text-white">
+                                        {value.createdAt.slice(0, 10)}
+                                      </TableCell>
+                                      <TableCell className="Text-white">
+                                        {value.email == null
+                                          ? value.email
+                                          : value.email.slice(1, 3) +
+                                            "..." +
+                                            value.email.slice(-10)}{" "}
+                                      </TableCell>
+                                      <TableCell className="Text-white">
+                                        {value.isVerfiedAccount
+                                          ? "Verified"
+                                          : "Unverified"}
+                                      </TableCell>
+                                      <TableCell className="Text-white">
+                                        {value.accountStatus == "Active"
+                                          ? "UnBlock"
+                                          : "Blocked"}
+                                      </TableCell>
+
+                                      <TableCell className="Text-white">
+                                        <button
+                                          style={{
+                                            padding: 8,
+                                            background: "transparent",
+                                            border: 0,
+                                          }}
+                                          onClick={() => {
+                                            if (
+                                              value.accountStatus == "Active"
+                                            ) {
+                                              this.updateuserblockstatus(
+                                                value.id,
+                                                false,
+                                                value.isVerfiedAccount
+                                              );
+                                            } else {
+                                              this.updateuserblockstatus(
+                                                value.id,
+                                                true,
+                                                value.isVerfiedAccount
+                                              );
+                                            }
+                                          }}
+                                          title="Block"
+                                        >
+                                          <MinusCircle
+                                            color={
+                                              value.accountStatus == "Active"
+                                                ? "white"
+                                                : "red"
+                                            }
+                                            size={16}
+                                          />
+                                        </button>
+                                        <button
+                                          title="Verify"
+                                          style={{
+                                            padding: 8,
+                                            background: "transparent",
+                                            border: 0,
+                                          }}
+                                          onClick={() => {
+                                            if (value.isVerfiedAccount)
+                                              this.updateuserblockstatus(
+                                                value.id,
+                                                value.accountStatus,
+                                                false
+                                              );
+                                            else {
+                                              this.updateuserblockstatus(
+                                                value.id,
+                                                value.accountStatus,
+                                                true
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          <CheckSquare
+                                            color={
+                                              value.isVerfiedAccount
+                                                ? "green"
+                                                : "white"
+                                            }
+                                            size={16}
+                                          />
+                                        </button>
+
+                                        <Link to="/userDetail">
+                                          <button
+                                            style={{
+                                              padding: 8,
+                                              background: "transparent",
+                                              border: 0,
+                                            }}
+                                            onClick={() => {
+                                              console.log(
+                                                localStorage.getItem(
+                                                  "useraddress"
+                                                )
+                                              );
+
+                                              localStorage.setItem(
+                                                "profileImage",
+                                                value.profileImage
+                                                  ? value.profileImage
+                                                  : "Null"
+                                              );
+                                              localStorage.setItem(
+                                                "address",
+                                                value.address
+                                                  ? value.address
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "email",
+                                                value.email ? value.email : " "
+                                              );
+                                              localStorage.setItem(
+                                                "username",
+                                                value.username
+                                                  ? value.username
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "bio",
+                                                value.bio ? value.bio : " "
+                                              );
+                                              localStorage.setItem(
+                                                "twitterLink",
+                                                value.twitterLink
+                                                  ? value.twitterLink
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "instagramLink",
+                                                value.instagramLink
+                                                  ? value.instagramLink
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "isVerfiedAccount",
+                                                value.isVerfiedAccount
+                                                  ? value.isVerfiedAccount
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "UserID",
+                                                value.id
+                                              );
+                                            }}
+                                            title="Detail"
+                                          >
+                                            <Eye
+                                              className="ml-2"
+                                              color="white"
+                                              size={16}
+                                            />
+                                          </button>
+                                        </Link>
+                                        <button
+                                          style={{
+                                            padding: 8,
+                                            background: "transparent",
+                                            border: 0,
+                                          }}
+                                          onClick={() =>
+                                            this.setState({ modalshow: true })
+                                          }
+                                          title="Role"
+                                        >
+                                          <FilePlus
+                                            className="ml-2"
+                                            color="white"
+                                            size={16}
+                                          />
+                                        </button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                          </TableBody>
+                        </Table>
+                        <div className="Text-white1">
+                          <TablePagination
+                            component="div"
+                            count={this.state.tableData.length}
+                            rowsPerPage={5}
+                            page={this.state.page}
+                            onChangePage={this.handleChangePage}
+                          />
+                        </div>
+                      </TableContainer>
+                    </div>
+                  ) : (
+                    <div
+                      style={{ alignItems: "center", alignContent: "center" }}
+                    >
+                      <p
+                        style={{
+                          textAlign: "center",
+                          color: "white",
+                          fontSize: 20,
+                        }}
+                      >
+                        No Record Found
+                      </p>
+                    </div>
+                  )}{" "}
+                </>
+              ) : (
+                <>" "</>
+              )}
+
+              {this.state.Search.length > 0 ? (
+                <>
+                  {" "}
+                  {this.state.tableData.filter((x) =>
+                    x.username
+                      ?.toLowerCase()
+                      .includes(this.state.Search.toLowerCase())
+                  ).length > 0 ? (
+                    <div style={{ padding: 10 }}>
+                      <TableContainer component={Paper} className="Text-white">
+                        <Table
+                          className="table table-striped [table-responsive-sm table-responsive-md table-responsive-lg table-responsive-xl AccountStatement Text-white"
+                          style={{ textAlign: "center", color: "white" }}
+                        >
+                          <TableHead className="Text-white">
+                            <TableRow style={{ color: "#fff" }}>
+                              <TableCell className="Text-white">
+                                Username
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Wallet-Address
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Creation-DAte
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Email
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Status
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                OnlineStatus
+                              </TableCell>
+                              <TableCell className="Text-white">
+                                Action
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody
+                            style={{ color: "#fff" }}
+                            className="Text-white"
+                          >
+                            {this.state.tableData &&
+                              this.state.tableData.length > 0 &&
+                              this.state.tableData.slice(
+                                this.state.page * 5,
+                                this.state.page * 5 + 5
+                              ) &&
+                              this.state.tableData
+                                .filter((x) =>
+                                  x.username
+                                    ?.toLowerCase()
+                                    .includes(this.state.Search.toLowerCase())
+                                )
+
+                                .map((value, index) => {
+                                  return (
+                                    <TableRow
+                                      key={index}
+                                      className="Text-white"
+                                    >
+                                      {/* {console.log(value)} */}
+
+                                      <TableCell className="Text-white">
+                                        {value.username}
+                                      </TableCell>
+                                      <TableCell className="Text-white">
+                                        {" "}
+                                        {value.address.slice(0, 9) + "..."}{" "}
+                                      </TableCell>
+                                      <TableCell className="Text-white">
+                                        {value.createdAt.slice(0, 10)}
+                                      </TableCell>
+                                      <TableCell className="Text-white">
+                                        {value.email == null
+                                          ? value.email
+                                          : value.email.slice(1, 3) +
+                                            "..." +
+                                            value.email.slice(-10)}{" "}
+                                      </TableCell>
+                                      <TableCell className="Text-white">
+                                        {value.isVerfiedAccount
+                                          ? "Verified"
+                                          : "Unverified"}
+                                      </TableCell>
+                                      <TableCell className="Text-white">
+                                        {value.accountStatus == "Active"
+                                          ? "UnBlock"
+                                          : "Blocked"}
+                                      </TableCell>
+
+                                      <TableCell className="Text-white">
+                                        <button
+                                          style={{
+                                            padding: 8,
+                                            background: "transparent",
+                                            border: 0,
+                                          }}
+                                          onClick={() => {
+                                            if (
+                                              value.accountStatus == "Active"
+                                            ) {
+                                              this.updateuserblockstatus(
+                                                value.id,
+                                                false,
+                                                value.isVerfiedAccount
+                                              );
+                                            } else {
+                                              this.updateuserblockstatus(
+                                                value.id,
+                                                true,
+                                                value.isVerfiedAccount
+                                              );
+                                            }
+                                          }}
+                                          title="Block"
+                                        >
+                                          <MinusCircle
+                                            color={
+                                              value.accountStatus == "Active"
+                                                ? "white"
+                                                : "red"
+                                            }
+                                            size={16}
+                                          />
+                                        </button>
+                                        <button
+                                          title="Verify"
+                                          style={{
+                                            padding: 8,
+                                            background: "transparent",
+                                            border: 0,
+                                          }}
+                                          onClick={() => {
+                                            if (value.isVerfiedAccount)
+                                              this.updateuserblockstatus(
+                                                value.id,
+                                                value.accountStatus,
+                                                false
+                                              );
+                                            else {
+                                              this.updateuserblockstatus(
+                                                value.id,
+                                                value.accountStatus,
+                                                true
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          <CheckSquare
+                                            color={
+                                              value.isVerfiedAccount
+                                                ? "green"
+                                                : "white"
+                                            }
+                                            size={16}
+                                          />
+                                        </button>
+
+                                        <Link to="/userDetail">
+                                          <button
+                                            style={{
+                                              padding: 8,
+                                              background: "transparent",
+                                              border: 0,
+                                            }}
+                                            onClick={() => {
+                                              console.log(
+                                                localStorage.getItem(
+                                                  "useraddress"
+                                                )
+                                              );
+
+                                              localStorage.setItem(
+                                                "profileImage",
+                                                value.profileImage
+                                                  ? value.profileImage
+                                                  : "Null"
+                                              );
+                                              localStorage.setItem(
+                                                "address",
+                                                value.address
+                                                  ? value.address
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "email",
+                                                value.email ? value.email : " "
+                                              );
+                                              localStorage.setItem(
+                                                "username",
+                                                value.username
+                                                  ? value.username
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "bio",
+                                                value.bio ? value.bio : " "
+                                              );
+                                              localStorage.setItem(
+                                                "twitterLink",
+                                                value.twitterLink
+                                                  ? value.twitterLink
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "instagramLink",
+                                                value.instagramLink
+                                                  ? value.instagramLink
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "isVerfiedAccount",
+                                                value.isVerfiedAccount
+                                                  ? value.isVerfiedAccount
+                                                  : " "
+                                              );
+                                              localStorage.setItem(
+                                                "UserID",
+                                                value.id
+                                              );
+                                            }}
+                                            title="Detail"
+                                          >
+                                            <Eye
+                                              className="ml-2"
+                                              color="white"
+                                              size={16}
+                                            />
+                                          </button>
+                                        </Link>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                          </TableBody>
+                        </Table>
+                        <div className="Text-white1">
+                          <TablePagination
+                            component="div"
+                            count={this.state.tableData.length}
+                            rowsPerPage={5}
+                            page={this.state.page}
+                            onChangePage={this.handleChangePage}
+                          />
+                        </div>
+                      </TableContainer>
+                    </div>
+                  ) : (
+                    <div
+                      style={{ alignItems: "center", alignContent: "center" }}
+                    >
+                      <p
+                        style={{
+                          textAlign: "center",
+                          color: "white",
+                          fontSize: 20,
+                        }}
+                      >
+                        No Record Found
+                      </p>
+                    </div>
+                  )}{" "}
+                </>
+              ) : (
+                <>" "</>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Modal 
+          {...this.props}
+          size="lg"
+        
+          show={this.state.modalshow}
+          onHide={this.handleClose}
+        >
+          <Modal.Header closeButton >
+            
+          </Modal.Header>
+          <Modal.Body >
+            <Table striped bordered hover variant="dark" style={{fontSize:"25px",borderBottom:"5px"}} >
+              <thead style={{background:"rgb(65,90,101)", color:"white", height:"55px"}}>
+                <tr>
+                  <th>Name</th>
+                  <th>Assigned Role</th>
+                  <th>New Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr >
+                  <td>Mark</td>
+                  <td>Admin</td>
+                  <td>
+                    <Dropdown >
+                      <Dropdown.Toggle id="dropdown-button-dark-example1" variant="dark" style={{background:"rgb(65,90,101)", color:"white",border:"1px solid grey"}}>
+                        New Role
+                      </Dropdown.Toggle>
+
+                      <Dropdown.Menu variant="dark"  style={{background:"rgb(65,90,101)", color:"white"}}>
+                        <Dropdown.Item href="#/action-1" >
+                          Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-2">
+                         Sub-Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-3">
+                          User
+                        </Dropdown.Item>
+                       
+                      </Dropdown.Menu>
+                    </Dropdown>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Mark</td>
+                  <td>Sub-Admin</td>
+                  <td>
+                    <Dropdown>
+                      <Dropdown.Toggle id="dropdown-button-dark-example1" variant="dark" style={{background:"rgb(65,90,101)", color:"white",border:"1px solid grey"}}>
+                        New Role
+                      </Dropdown.Toggle>
+
+                      <Dropdown.Menu variant="dark"  style={{background:"rgb(65,90,101)", color:"white"}}>
+                        <Dropdown.Item href="#/action-1" >
+                          Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-2">
+                         Sub-Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-3">
+                          User
+                        </Dropdown.Item>
+                       
+                      </Dropdown.Menu>
+                    </Dropdown>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Mark</td>
+                  <td>Sub-Admin</td>
+                  <td>
+                    <Dropdown>
+                      <Dropdown.Toggle id="dropdown-button-dark-example1" variant="dark" style={{background:"rgb(65,90,101)", color:"white",border:"1px solid grey"}}>
+                        New Role
+                      </Dropdown.Toggle>
+
+                      <Dropdown.Menu variant="dark"  style={{background:"rgb(65,90,101)", color:"white"}}>
+                        <Dropdown.Item href="#/action-1" >
+                          Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-2">
+                         Sub-Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-3">
+                          User
+                        </Dropdown.Item>
+                       
+                      </Dropdown.Menu>
+                    </Dropdown>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Mark</td>
+                  <td>Sub-Admin</td>
+                  <td>
+                    <Dropdown>
+                      <Dropdown.Toggle id="dropdown-button-dark-example1" variant="dark" style={{background:"rgb(65,90,101)", color:"white",border:"1px solid grey"}}>
+                        New Role
+                      </Dropdown.Toggle>
+
+                      <Dropdown.Menu variant="dark" style={{background:"rgb(65,90,101)", color:"white"}}>
+                        <Dropdown.Item href="#/action-1" >
+                          Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-2">
+                         Sub-Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-3">
+                          User
+                        </Dropdown.Item>
+                      
+                      </Dropdown.Menu>
+                    </Dropdown>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Mark</td>
+                  <td>Sub-Admin</td>
+                  <td>
+                    <Dropdown>
+                      <Dropdown.Toggle id="dropdown-button-dark-example1" variant="dark" style={{background:"rgb(65,90,101)", color:"white",border:"1px solid grey"}}>
+                        New Role
+                      </Dropdown.Toggle>
+
+                      <Dropdown.Menu variant="dark" style={{background:"rgb(65,90,101)", color:"white"}}>
+                        <Dropdown.Item href="#/action-1" >
+                          Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-2">
+                         Sub-Admin
+                        </Dropdown.Item>
+                        <Dropdown.Item href="#/action-3">
+                          User
+                        </Dropdown.Item>
+                       
+                      </Dropdown.Menu>
+                    </Dropdown>
+                  </td>
+                </tr>
+              </tbody>
+            </Table>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button size="lg" style={{background:"rgb(65,90,101)", color:"white", border:"1px solid grey"}}>Save Changes</Button>
+          </Modal.Footer>
+        </Modal>
+      </>
+    );
+  }
+}
+export default connect(mapStateToProps, mapDispatchToProps)(MenageAccount);
